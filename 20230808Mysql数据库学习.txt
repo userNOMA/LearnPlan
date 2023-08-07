@@ -1,0 +1,353 @@
+1.常用命令
+退出
+exit
+查看
+show databases;
+使用
+use name;
+创建
+create database name;
+展示表
+show tables;
+导入(可以直接拖拽文件到命令行，自动变成路径，不能包含中文)
+source
+
+
+2.语句的分类
+DQL：查询语句，带有select
+DML：操作语句，表中数据增删改，insert,delete,update
+DDL：定义语句，更改表结构，create,drop,alter
+TCL：事务控制语句，commit，rollback
+DCL：数据控制语句，grant,revoke
+
+
+3.基本操作
+查看表中的数据
+select * from table;
+查看表结构
+desc table;
+查看当前使用的数据库
+select database();
+查看当前数据库版本
+select version();
+分号表示结束，之后才会执行，不区分大小写
+终止输入
+\c
+删除数据库
+drop database 数据库名
+
+
+4.DQL语句（简单查询语句）
+查询一个字段（不区分大小写）
+select 字段名 from 表名;
+查询多个字段，使用逗号隔开
+查询所有字段，把所有字段都写上，或者使用星号（效率比较低，给的信息越多，效率越高，实际开发不建议采用）
+查询的列起别名
+select 字段名 as 新名字 from 表名;
+as关键字可以省略，别名中的空格要用单引号或者双引号引起来
+但是单引号是通用的，双引号有些数据库用不了
+查询的时候，字段可以使用数学表达式，加减乘除
+select ename,sal as yearsal from emp;
+别名如果是中文和空格一样需要用单引号括起来，也就是说字符串都是要用单引号括起来
+
+5.条件查询（不将表中所有的数据都查询出来）
+select
+    字段1, 字段2,
+from
+        表名
+where
+    条件
+具体条件
+等于=，不等于!=或者<>，小于<，大于>
+介于两个值之间between 数值A and 数值B（必须左边小右边大，而且是闭区间）
+或者>= 数值A and <= 数值B
+null为空因此不能用等于号等符号进行衡量
+并且and，或者or，二者的优先级是and>or，通过括号的方式确保优先级
+select empno,ename,job from emp where job = 'MANAGER' or job = 'SALESMAN';
+select empno,ename,job from emp where sal > 2500 and deptno = 10 or deptno = 20;
+包含in，等价于多个or，还有不包含not in
+select empno,ename,job from emp where job in ('MANAGER', 'SALESMAN')
+select empno,ename,job from emp where job = 'MANAGER' or job = 'SALESMAN';
+模糊查询like,%代表匹配任意个字符，_表示只匹配任意一个字符，找这个两个字符要使用转义字符\
+select ename from emp where ename like '%O%';
+select ename from emp where ename like '_A%';
+
+6.排序
+select
+    字段1, 字段2,
+from
+        表名
+order by
+    字段1, 字段2
+默认采用升序排列，desc指定降序，asc指定升序，加在排序字段之后
+可以先按照字段1排序，再按照字段2排序
+字段名称也可以换成列的编号
+
+7.综合查询要先指定表，再给条件，再排序
+
+8.处理函数，单行处理函数，一个输入对应一个输出
+多行处理函数，多个输入对应一个输出
+upper 转大写
+select upper(ename) from emp;
+lower 转小写
+select lower(ename) from emp;
+concat 字符串拼接
+substr 取子串
+select substr(ename, 1, 1) from emp;
+select ename from emp where substr(ename, 1, 1) = 'A'
+length 取长度
+trim 去空格
+str_to_date 将字符串转换为日期
+date_formate
+format 设置千分位
+round 四舍五入
+rand 生成随机数
+ifnull 空处理函数，将null处理为具体值
+select后面也可以加字面量，但是查询的结果都是这些字面量
+case .. when .. then .. when .. then .. else .. end
+select
+    ename,
+    job,
+    sal as oldsal,
+    (case job when 'MANAGER then sal*1.1 when 'SALESMAN' then sal=1'5 else sal end) as newsal
+from
+    emp;
+
+
+9.分组函数，多行处理函数，输入多行，输出一行
+使用的时候必须先进行分组，如果没有分组，默认整个表为一组
+sum  求和
+avg 平均值
+max 最大值
+min 最低值
+count 统计数量
+count(字段)，字段下一行不为空的总数
+count(*)，所有字段一行不为空的总行数
+分组函数自动忽略NULL，不需要提前处理
+分组函数不能使用再where子句中
+分组函数可以组合起来一起使用
+select sum(sal),min(sal) from emp;
+
+10.分组查询
+select
+    ...
+from
+    ...
+group by
+  ...
+order by
+  ...
+执行顺序为:这也是分组函数不能使用再where后面的原因
+from
+where
+group by 
+select
+order by
+select
+    job,sum(sal)
+from
+    emp
+group by
+    job;
+以上例子不能select后面只能加分组的字段，虽然在SQL不报错，但是其他数据库会报错
+分组是可以联合进行分组的，这样联合分组的字段也可以select并使用分组函数
+having 对分完组之后的数据进行进一步过滤，不能单独使用，必须搭配group by,优先使用where
+
+11.查询结果去重
+distinct 只能出现在所有字段的最前方,两个字段前方是联合去重
+select distinct job from emp;
+
+12.连接查询
+SQL92和SQL99
+内连接（等值连接，非等值连接，自连接），外连接（左连接和右连接），全连接
+select ename,dname form emp,dept;
+表连接如果没有限制，会进行一对多匹配，叫做笛卡尔积现象，可以更改为
+select 
+    ename,dname 
+form 
+    emp,dept
+where
+  emp.deptno = dept.deptno;
+以上匹配次数没有减少，指定表.字段，并起别名
+select 
+    e.ename,d.dname 
+form 
+    emp e,dept d
+where
+  e.deptno = d.deptno;
+
+11.内连接-等值连接
+92语法
+select 
+    e.ename,d.dname 
+form 
+    emp e,dept d
+where
+  e.deptno = d.deptno;
+99语法
+select 
+    e.ename,d.dname 
+form 
+    emp e
+join
+  dept d
+on
+  e.deptno = d.deptno;
+92语法不清晰，连接条件和其他条件混在了一起
+可以在join前加inner表示内连接，但是可以省略
+
+12.内连接-非等值连接
+select
+    e.ename, e.sal, 
+form
+    emp e,
+join
+    salgrade s
+on
+  e.sal between s.losal and s.hisal;
+
+13.内连接-自连接
+一张表看作两张表
+
+14.外连接
+内连接是匹配能满足条件的数据
+外连接是不仅显示满足条件的，还显示一张表中匹配不上的数据
+select 
+    e.ename,d.dname 
+form 
+    emp e
+right join
+  dept d
+on
+  e.deptno = d.deptno;
+right意思是将右边的表作为主表-右连接
+还有对应的左连接，left
+outer也可以省略
+外连接的查询结果一定大于内连接的查询结果
+
+
+15.三张表的连接
+select
+    ...
+from
+    a
+join
+    b
+on
+  ab连接条件
+join
+  c
+on 
+  ac连接条件
+join
+  d
+on
+  ad连接条件
+一条语句中内连接和外连接都可以出现
+
+16.子查询
+select中嵌套Select，内部的叫做子查询
+select
+    ..(select)
+from
+    ..(select)
+where
+    ..(select)
+where中的子查询，解决where中不能使用分组函数的问题
+from中的子查询，可以将子查询的解决当成一张临时表，起别名使得其更方便
+select中的子查询，这个子查询，一次只能返回一条结果
+
+17.union将查询结果合并
+select ..
+union
+select ..
+表连接的效率较高，减少匹配次数，并完成结果集的拼接，把乘法变成加法
+union和合并的时候，要求列数相同，mysql允许不同数据类型连接，但是orcal不允许
+
+18.limit
+将查询结果的一部分取出来，通常使用在分页查询当中
+分页的作用是为了提高用户体验，可以进行翻页
+select
+ 	ename,sal
+from
+	emp
+order by
+	sal desc
+limit 5;
+用法，limit startindex length
+一定要在order by之后执行,起始位置从0开始
+通用分页
+limit (pageNO-1)*pagesize, pagesize
+
+18.顺序总结
+select
+	...
+from
+	...
+where
+	...
+group by
+	...
+having
+	...
+order by
+	...
+limit
+	...
+
+
+19.表的创建
+create 表名(字段名1 数据类型，字段名2 数据类型)
+直观一点的写法
+create 表名(
+	字段名1 数据类型 default 值，
+	字段名2 数据类型
+);
+建议表名以t_或者tbl_开始，做到见名知意
+varchar 可变长度字符串，智能节省空间，但是性能不好，最长255
+char 定长字符串，浪费个空间，但是性能好
+int 整数型，最长11
+bigint 长整数型
+float 单精度浮点数
+double 双精度浮点数
+date 短日期
+datetime 长日期
+clob 字符大对象，最多4GB的字符串，超过255都用这个
+blob 二进制大对象，存储图片、声音，插入的时候需要使用IO流
+
+
+20.表的删除
+drop table 表名
+drop table 表名 if exists;
+工具navicat for MySQL
+
+
+21.insert语句
+insert into 表名(字段名1，字段名2) values(值1，值2)
+没有给其他字段指定值，使用默认值，NULL
+中的字段名是可以省略的，但是等于都写上了
+插入日期：
+str_to_date：字符串varchar转换为日期
+date_format：Date类型转换为varchar
+数据库中所有的标识符全部小写，单词之间下划线连接
+%Y
+%m
+%d
+%h
+%i
+%s
+str_to_date('10-01-1990','%m-%d-%Y')
+date_format类似
+查询的结果在显示的时候都是转换成字符串展示的
+date是短日期，只包括年月日，默认的是:%Y-%m-%d
+datetime长日期，还包括时分秒:%Y-%m-%d %h:%i:%s
+也就是说默认给这两个格式输入字符串，写成以上默认格式的字符串不会报错
+获取系统当前时间：now()
+
+22.update
+update 表名 set 字段名1=值1，字段名2=值2 where 条件
+没有条件所有数据全部更新
+
+23.delete
+delete from 表名 where 条件;
+没有条件所有条件全部删除
