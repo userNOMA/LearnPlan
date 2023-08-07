@@ -157,7 +157,7 @@ having 对分完组之后的数据进行进一步过滤，不能单独使用，�
 distinct 只能出现在所有字段的最前方,两个字段前方是联合去重
 select distinct job from emp;
 
-12.连接查询
+12.连接查询*****
 SQL92和SQL99
 内连接（等值连接，非等值连接，自连接），外连接（左连接和右连接），全连接
 select ename,dname form emp,dept;
@@ -323,7 +323,7 @@ drop table 表名 if exists;
 
 
 21.insert语句
-insert into 表名(字段名1，字段名2) values(值1，值2)
+insert into 表名(字段名1，字段名2) values(值1，值2),(值1，值2)
 没有给其他字段指定值，使用默认值，NULL
 中的字段名是可以省略的，但是等于都写上了
 插入日期：
@@ -343,6 +343,7 @@ date是短日期，只包括年月日，默认的是:%Y-%m-%d
 datetime长日期，还包括时分秒:%Y-%m-%d %h:%i:%s
 也就是说默认给这两个格式输入字符串，写成以上默认格式的字符串不会报错
 获取系统当前时间：now()
+insert可以同时插入多条数据
 
 22.update
 update 表名 set 字段名1=值1，字段名2=值2 where 条件
@@ -351,3 +352,304 @@ update 表名 set 字段名1=值1，字段名2=值2 where 条件
 23.delete
 delete from 表名 where 条件;
 没有条件所有条件全部删除
+
+24.快速建表，直接从查询结果建表
+cerate table emp2 as select * from emp;
+
+25.从查询结果插入，字段表结构应该一致
+insert into dept_bak select * from dept;
+
+26.快速删除表中的数据
+delete from dept_bak;
+delete的效率比较低，删除的时候不释放空间，删掉之后还可以回归，属于DML语句
+rollback;回滚操作
+truncate table dept_bak;删除表中的数据，不能删除单条，不支持回滚，属于DDL语句，提示用户删除后不可恢复
+drop table dept_bak;直接删除表
+
+27.对表结构的增删改
+实际的开发中，需求一旦确定之后，表一旦设计好之后，很少对表的结构进行修改
+开发的时候修改表结构的成本很高
+修改表结构的操作很少，可以直接在工具中修改
+alter
+
+28.约束*****
+constraint
+创建表的时候加入约束保证表中的数据有效
+常见的约束：
+not null 非空约束
+unique 唯一性的约束
+primary key 主键约束
+foreign key 外键约束
+检查约束(mysql不支持）
+约束在创建的时候，直接加在values后面
+Sql脚本文件可以直接拖进命令行执行,source 脚本路径
+drop table if exit t_vip;
+create table t_vip(
+	id int,
+	name varchar(255) not null
+)
+not null 没有表级约束语法
+unique虽然不能重复（列级约束），但是可以为空，可以联合起来唯一(表级约束)
+create table t_vip(
+	id int,
+	name varchar(255),
+	email varchar(255),
+	unique(name,email)
+)
+多个约束可以联合使用
+create table t_vip(
+	id int,
+	name varchar(255) not null unique
+)
+同时被null和unique约束sql中变成主键字段，但是orcal当中不是这样的
+
+29.主键约束-pk
+术语：
+主键约束-一种约束，可以使用表级约束
+主键字段-添加主键约束的字段
+主键值-主键字段的值，不能重复，不能为空
+任何一张表都应该有主键，没有主键表无效
+create table t_vip(
+	id int primary key,
+	name varchar(255)
+)
+联合起来做主键，组成复合主键，不建议使用复合主键
+create table t_vip(
+	id int,
+	name varchar(255),
+	primary key(id,name)
+)
+一张表只能有一个主键，主键值建议使用int bigint char不建议使用varchar，一般都是定长的
+自然主键：自然数，这个用的多，只要不重复就行
+业务主键：和业务紧密联系，不建议使用
+mysql可以自动维护主键值
+create table t_vip(
+	id int primary key auto_incrment,
+	name varchar(255)
+)
+auto_incrment从1开始以1递增
+
+30.外键约束 foreign key-fk
+业务背景：解决字段冗余，建立班级表和学生表，解决班级名称太长的问题
+外键约束就是指定某表中的值必须引用另外一张表中某字段的值
+被引用的被称为父表，引用的表是字表
+删表，删除表中的数据，先子表，再父表
+创建表，创建表数据，先父表，再子表
+create table t_class(
+	classno int primary key,
+	classname varchar(255)
+)
+create table t_student(
+	no int primary key auto_incrment,
+	name varchar(255),
+	cno int,
+	foreign key(cno) references t_class(classno)
+)
+外键值可以为空
+
+31.存储引擎
+mysql数据库当中的属于，orcal当中没有（有，但是名字不同）
+实际上是指一个表的存储/组织数据的方式，在建表时小括号后指定
+show create table t_student;
+展示建表语句
+create table t_student(
+	no int primary key auto_incrment,
+	name varchar(255),
+	cno int,
+	foreign key(cno) references t_class(classno)
+) engine = InnoDB CHARSET=utf8
+默认使用存储引擎InnoDB，字符集utf8
+mysql支持的存储引擎：show engines \G
+一共支持九大引擎，但并不是所有的版本都支持全部引擎
+常用的有：MyISAM、InnoDB、MEORY
+MyISAM:三个文件表示表，优势在于可以压缩、转为只读来节省空间
+格式文件-定义表结构，.frm
+数据文件-存储行内容，.MYD
+索引文件-索引，缩小扫描范围，提高效率，主键自动创建索引，。.MYI
+InnoDB:默认的重量级存储引擎，支持事务，数据库崩溃后自动恢复机制，安全
+在表空间（逻辑名称）中存储数据和索引
+格式存储在.frm文件中
+MEORY:数据存储到内存当中，目的就是查询快，不能存TEXT,BLOB，不安全
+每个表以.frm格式文件表示
+
+32.事务******
+事务就是一个完整的事务逻辑
+最小的工作单元，要么同时成功，要么同时失败，不可再分
+只有DML语句才有事务（insert,delete,update）
+涉及到数据的增删改就一定要考虑安全问题，数据安全第一位
+批量的MDL语句要么同时成功要么同时失败
+InnoDB存储引擎提供了一组用来记录事务性活动的日志文件
+可以提交事务-清空数据文件，将数据彻底持久化到数据库当中，标志着事务的结束，全部成功的结束
+也可以回滚事务-撤销全部DML操作，清空数据文件，标志着事务全部失败的结束
+提交事务：commit
+回滚事务：rollback
+默认情况下，mysql自动提交事务，每执行一条mysql提交一次
+开启事务(关闭自动提交机制)：start tranction;
+事务回滚只能回滚到上一次提交的状态
+事务的特性：
+A 原子性：不可再分
+B 一致性：所有操作同时成功或者失败
+C 隔离性：两个事务之间有一定的隔离
+E 持久性：提交后保存到硬盘上
+事务的隔离级别有4个
+a 读未提交：read uncommitted（最低级别）
+	事务A可以读取事务B未提交的数据
+	成为读到了脏数据，脏读
+	这种级别是理论上的，一般从b开始
+b 读已提交：read commit
+	事务A只能读到事务B提交后的数据
+	解决了脏数据，但是不可重复读取数据
+	可能第一次读到的是3条数据，第二次读到的是4条数据
+	真实的数据，orcal默认的隔离级别即为此
+c 可重复读：repeatable read
+	事务A开启后，不管多久，每次都能从A中读取到相同的数据
+	解决不可重复读问题，存在的问题是可能出现幻影，每次读取到的数据都是幻象，不真实
+d 序列化/串行化：serializable（最高级别）
+	效率最低，解决了所有问题
+	实际上表示事务排队，不能并发
+	每一次读取的数据都是最真实的
+隔离级别的验证：
+create table t_table(name varchar(255));
+查看隔离级别
+select @@tx_isolation
+set global transaction isolation level read committed;
+
+
+33.索引
+索引是在一个字段上建立的，为了提高查询效率的一种机制，参考一页一页翻字典和查目录
+SQL的两种查询方式：全表扫描、根据索引检索
+索引的实现原理：
+1.主键自动添加索引，unique约束的字段也会添加索引
+2.任何一条表中的记录在硬盘上都有物理存储编号
+3.mysql当中索引是一个单独的对象，不同的存储引擎形式不同
+	MyISAM引擎的索引在.MYI文件，InnoDB引擎中在tablespace当中
+	MEMORY引擎的索引在内存中，索引是自平衡二叉树B-Tree
+添加索引的条件：
+1.数据量庞大（要根据机器条件而定，不是固定的）
+2.该字段经常出现在where后面以条件的形式存在，总是被扫描
+3.该字段不经常被DML操作
+创建索引：
+create index emp_ename index on emp(ename);
+删除索引：
+drope index emp_ename index on emp;
+查看是否索引：
+explain select * from emp where ename = 'KING';
+底层是用哈希算法实现的，所以查询内容比较多
+索引的失效：
+1.模糊查询以百分号开始
+explain select * from emp where ename like '%T';
+2.使用or的时候两边有一边没有索引的时候，建议使用union
+explain select * from emp where ename = 'KING' or ename = 'KINGS';
+3.where符合索引没有使用左侧列查找
+create index emp_job_sal_index on emp(job,sal);
+explain select * from emp where sal = 800;
+4.where当中索引参与了运算
+explain select * from emp where sal+1 = 800;
+5.where当中索引列使用了函数
+explain select * from emp where lower(name) = 'KING';
+
+
+34.视图
+就是站在不同的角度去看同一份数据
+创建视图：
+create view dept2_view as select * from dept2;
+删除视图：
+drop view dept2_view
+DDL命令才能操作视图
+对视图对象的增删改查会导致原表被操作
+可以在视图中插入数据：
+insert into dept2_view(deptno,dname,loc) values(60, 'SALES', 'NEW YOURK');
+create view
+	emp_dept_view
+as
+	select
+		e.ename,e.sal,d.dname
+	from
+		emp e
+	join
+		dept d
+	on
+		e.deptno = d.deptno
+select * from emp_dept_view
+可以将SQL语句得到的表当作一个视图，后面修改简单，方便后期的维护
+增删改查一般说成CRUD，create,Retrive,update,delete
+
+35.DBA常用命令
+具体见文档
+重要的两个命令：数据的导入和导出
+数据导出：mysqldump 库名>位置 -用户名 -密码
+mysqldump bjpowernode>D:\bjpowernode.sql -uroot -p123456
+也可以只导出其中某一张表
+mysqldump bjpowernode emp>D:\bjpowernode.sql -uroot -p123456
+数据导出：
+登录数据库服务器
+创建数据库 create database bjpowernode;
+使用数据库 use bjpowernode;
+初始化数据库并导入 source D:\bjpowernode.sql
+
+36.数据库设计三范式*****
+也就是数据库表的设计的依据，按照范式进行可以避免数据冗余，空间的浪费
+第一范式：任何一张表必须有主键，没有一个字段原子性不可再分
+第二范式：要求所有非主键字段完全依赖主键，不要产生部分依赖
+第三范式：所有非主键字段直接依赖主键，不产生传递依赖
+第一范式，最核心，最重要
+（以下不满足第一范式）
+学生编号	学生姓名	联系方式
+-----------------------------
+001			张三		14@aa.com，159376666
+002			李四		14@aa.com，159376666
+003			王五		14@aa.com，159376666
+应该改为：
+学生编号(pk)学生姓名	邮箱		电话
+-----------------------------
+001			张三		14@aa.com	159376666
+002			李四		14@aa.com	159376666
+003			王五		14@aa.com	159376666
+（以下不满足第二范式也不满足第一范式）
+学生编号	学生姓名	教师编号	教师名称
+-----------------------------
+001			张三		566			张老师
+002			李四		144			王老师
+003			王五		143			张老师
+应该改为三张表：多对多，三张表，关系表两个外键
+学生编号(pk)	学生姓名
+-----------------------------
+001			张三	
+002			李四		
+003			王五		
+教师编号(pk)	教师名称
+-----------------------------
+566			张老师
+144			王老师
+143			张老师
+id(pk)	学生编号	教师编号
+-----------------------------
+1		001			566		
+2		002			144			
+3		003			143		
+以下仅不满足第三范式：
+学生编号(pk)	学生姓名	班级编号	班级
+------------------------------------------------
+1001			张三		01			一年级一班
+1002			李四		02			一年级二班
+1003			王五		03			一年级三班
+1004			赵六		04			一年级三班
+应该改为两张表：一对多，两张表，多的表加外键
+班级表：一
+班级编号	班级
+------------------------
+01			一年级一班
+02			一年级二班
+03			一年级三班
+学生表：多
+学生编号(pk)	学生姓名	班级编号
+-------------------------------------
+1001			张三		01
+1002			李四		02
+1003			王五		03		
+1004			赵六		04	
+注意：
+数据库设计三范式是理论上的，时间和理论是有区别的
+目的是为了满足客户的需求，有些时候会拿冗余换执行速度
+有的时候存在冗余是合理的，链接次数越多效率越低，考虑客户的情况
+		
